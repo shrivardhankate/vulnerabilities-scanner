@@ -9,14 +9,14 @@ except socket.gaierror:
     print("Error: Unable to resolve hostname or IP address.")
     exit()
 
-print(f"Target: {target_ip}...")
+print(f"Target: {target}...")
 print(f"IP Address:{target_ip}...")
 print("Scanning ports...")
 
 start_time = time.time()
 
 open_ports = []
-for port in range(1, 1024):
+for port in range(1, 135):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(1)
     
