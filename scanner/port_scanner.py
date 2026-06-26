@@ -16,9 +16,9 @@ print("Scanning ports...")
 start_time = time.time()
 
 open_ports = []
-for port in range(1, 135):
+for port in range(1, 136):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(1)
+    sock.settimeout(0.1)
     
     result = sock.connect_ex((target_ip, port))
     
