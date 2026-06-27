@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import socket
 import time
 
@@ -16,17 +17,26 @@ print("Scanning ports...")
 start_time = time.time()
 
 open_ports = []
-for port in range(1, 136):
+def scan_port(port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(0.1)
-    
     result = sock.connect_ex((target_ip, port))
     
     if result == 0:
-        print(f"[OPEN] Port {port}")
         open_ports.append(port)
-        
+    
     sock.close()
+    
+with ThreadPoolExecutor(max_workers=100) as executor:
+    executor.map(scan_port, range (1, 66000))
+    
 end_time = time.time()
-print(f"\n Open ports: {len(open_ports)}")
+
+open_ports.sort()
+
+print("\nOpen ports found:")
+
+for port in open_ports:
+    print(f"Port {port}")
+print(f"\n Total open ports: {len(open_ports)}")
 print(f"Scanning completed in {end_time - start_time:.2f} seconds.")
