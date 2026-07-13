@@ -25,7 +25,14 @@ def scan_port(port):
         service = serv_name(port)
         banner = grab_banner(port)
         parsed_banner = parse_banner(service, banner)
-        open_ports.append((port, service, parsed_banner))
+        software, version = extract_version(service, parsed_banner)
+        open_ports.append({
+            "port": port,
+            "service": service,
+            "banner": parsed_banner,
+            "software": software,
+            "version": version
+        })
     sock.close()
     
 def serv_name(port):
@@ -61,9 +68,9 @@ def parse_banner(service, banner):
         return banner.splitlines()[0] 
     
     elif service == "HTTP":
-        header = banner.split("\r\n")[0]
+        header = banner.split("\r\n\r\n")[0]
         
-        for line in banner.split("\r\n"):
+        for line in header.split("\r\n"):
             if line.lower().startswith("server:"):
                 return line.split(":", 1)[1].strip()
             
@@ -72,17 +79,41 @@ def parse_banner(service, banner):
     else:
         return banner
 
+def extract_version(service, banner):
+    if banner == "No banner available":
+        return "Unknown", "Unknown"
+    if service == "SSH":
+        version_line = banner.split("-")[-1]
+        parts = version_line.split("_")
+        if len(parts) >= 2:
+            software = parts[0].capitalize()
+            version = parts[1]
+        else:
+            software = "Unknown"
+            version = "Unknown"
+    else:
+        software = "Unknown"
+        version = "Unknown"
+
+    return software, version
+
 with ThreadPoolExecutor(max_workers=100) as executor:
     executor.map(scan_port, range (1, 4000))
     
 end_time = time.time()
 
-open_ports.sort()
+open_ports.sort(key=lambda x: x["port"])
 if open_ports:
     print("\nOpen ports found:")
 
-    for port, service, banner in open_ports:
-        print(f"[OPEN] Port {port:<5} Service: {service} Banner: {banner}")
+    for port_info in open_ports:
+        print(
+    f"\n[OPEN] Port {port_info['port']}\n"
+    f"Service : {port_info['service']}\n"
+    f"Banner  : {port_info['banner']}\n"
+    f"Software: {port_info['software']}\n"
+    f"Version : {port_info['version']}"
+    )
     print(f"\nTotal open ports: {len(open_ports)}")
     print(f"Scanning completed in {end_time - start_time:.2f} seconds.")
 else:
