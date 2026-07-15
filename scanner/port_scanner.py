@@ -17,6 +17,19 @@ print("Scanning ports...")
 start_time = time.time()
     
 open_ports = []
+
+vulnerability_db = {
+    "Dropbear": {
+        "2020.80": {
+            "cve": "CVE-2020-36254",
+            "severity": "High",
+            "cvss": 8.8,
+            "description": "Example vulnerability for learning.",
+            "recommendation": "Upgrade to the latest patched version."
+        }
+    }
+}
+
 def scan_port(port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(0.1)
@@ -26,12 +39,14 @@ def scan_port(port):
         banner = grab_banner(port)
         parsed_banner = parse_banner(service, banner)
         software, version = extract_version(service, parsed_banner)
+        vulnerability = lookup_vulnerability(software, version)
         open_ports.append({
             "port": port,
             "service": service,
             "banner": parsed_banner,
             "software": software,
-            "version": version
+            "version": version,
+            "vulnerability": vulnerability
         })
     sock.close()
     
@@ -97,6 +112,19 @@ def extract_version(service, banner):
 
     return software, version
 
+def lookup_vulnerability(software, version):
+    
+    software_data = vulnerability_db.get(software)
+    
+    if software_data is None:
+        return None
+    
+    version_data = software_data.get(version)
+    if version_data is None:
+        return version_data
+    
+    return version_data
+
 with ThreadPoolExecutor(max_workers=100) as executor:
     executor.map(scan_port, range (1, 4000))
     
@@ -107,15 +135,22 @@ if open_ports:
     print("\nOpen ports found:")
 
     for port_info in open_ports:
+        vuln = port_info['vulnerability']
         print(
     f"\n[OPEN] Port {port_info['port']}\n"
     f"Service : {port_info['service']}\n"
     f"Banner  : {port_info['banner']}\n"
     f"Software: {port_info['software']}\n"
-    f"Version : {port_info['version']}"
+    f"Version : {port_info['version']}\n"
+    f"Vulnerability: {vuln['cve'] if port_info['vulnerability'] else 'None'}"
+    f"\nCVSS Score: {vuln['cvss'] if port_info['vulnerability'] else 'N/A'}"
+    f"\nSeverity: {vuln['severity'] if port_info['vulnerability'] else 'N/A'}"
+    f"\nDescription: {vuln['description'] if port_info['vulnerability'] else 'N/A'}"
+    f"\nRecommendation: {vuln['recommendation'] if port_info['vulnerability'] else 'N/A'}"
     )
     print(f"\nTotal open ports: {len(open_ports)}")
     print(f"Scanning completed in {end_time - start_time:.2f} seconds.")
 else:
     print("\nNo open ports found.")
     print(f"Scanning completed in {end_time - start_time:.2f} seconds.")
+    
