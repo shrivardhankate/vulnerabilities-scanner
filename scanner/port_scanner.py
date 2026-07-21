@@ -1,6 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
 import socket
 import time
+from risk_engine import calculate_risk
+from vulnerability_lookup import lookup_vulnerability
 
 target = input("Enter the target IP address or hostname: ")
 
@@ -18,18 +20,6 @@ start_time = time.time()
     
 open_ports = []
 
-vulnerability_db = {
-    "Dropbear": {
-        "2020.80": {
-            "cve": "CVE-2020-36254",
-            "severity": "High",
-            "cvss": 8.8,
-            "description": "Example vulnerability for learning.",
-            "recommendation": "Upgrade to the latest patched version."
-        }
-    }
-}
-
 def scan_port(port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(0.1)
@@ -40,13 +30,15 @@ def scan_port(port):
         parsed_banner = parse_banner(service, banner)
         software, version = extract_version(service, parsed_banner)
         vulnerability = lookup_vulnerability(software, version)
+        risk_level = calculate_risk(vulnerability['cvss']) if vulnerability else "N/A"
         open_ports.append({
             "port": port,
             "service": service,
             "banner": parsed_banner,
             "software": software,
             "version": version,
-            "vulnerability": vulnerability
+            "vulnerability": vulnerability,
+            "risk_level": risk_level
         })
     sock.close()
     
@@ -112,19 +104,6 @@ def extract_version(service, banner):
 
     return software, version
 
-def lookup_vulnerability(software, version):
-    
-    software_data = vulnerability_db.get(software)
-    
-    if software_data is None:
-        return None
-    
-    version_data = software_data.get(version)
-    if version_data is None:
-        return version_data
-    
-    return version_data
-
 with ThreadPoolExecutor(max_workers=100) as executor:
     executor.map(scan_port, range (1, 4000))
     
@@ -145,6 +124,7 @@ if open_ports:
     f"Vulnerability: {vuln['cve'] if port_info['vulnerability'] else 'None'}"
     f"\nCVSS Score: {vuln['cvss'] if port_info['vulnerability'] else 'N/A'}"
     f"\nSeverity: {vuln['severity'] if port_info['vulnerability'] else 'N/A'}"
+    f"\nRisk Level: {port_info['risk_level'] if port_info['vulnerability'] else 'N/A'}"
     f"\nDescription: {vuln['description'] if port_info['vulnerability'] else 'N/A'}"
     f"\nRecommendation: {vuln['recommendation'] if port_info['vulnerability'] else 'N/A'}"
     )
